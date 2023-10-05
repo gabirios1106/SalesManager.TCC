@@ -1,0 +1,54 @@
+﻿@page "/departments"
+@inherits DepartmentsBase
+
+<PageTitle>Departments</PageTitle>
+
+<MudTable Items="@departmentsGetDTO" Dense="@dense" Hover="@hover" ReadOnly="@ronly" Filter="new Func<DepartmentGetDTO,bool>(FilterFunc)" SortLabel="Sort By">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Departmentos</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <ColGroup>
+        <col style="width:70%;" />
+        <col style="width:30%;" />
+        <col style="width:50px;" />
+    </ColGroup>
+    <HeaderContent>
+        <MudTh><MudTableSortLabel InitialDirection="SortDirection.Ascending" SortBy="new Func<DepartmentGetDTO, object>(x=>x.DepartmentName)">Departamento</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<DepartmentGetDTO, object>(x=>x.CreatedAt)">Data de criação</MudTableSortLabel></MudTh>
+        <MudTh>&nbsp;</MudTh>
+        <MudTh>&nbsp;</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="DepartmentName">@context.DepartmentName</MudTd>
+        <MudTd DataLabel="CreatedAt">@context.CreatedAt</MudTd>
+        <MudTh><MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Title="Editar" OnClick="OpenCloseModal" /></MudTh>
+        <MudTh><MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Title="Excluir" OnClick="OnButtonClicked" /></MudTh>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+    <EditButtonContent Context="button">
+        <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" Class="pa-0" OnClick="@button.ButtonAction" Disabled="@button.ButtonDisabled" />
+    </EditButtonContent>
+</MudTable>
+<br />
+<MudChip>@state</MudChip>
+
+
+@*     FORMULÁRIO PARA CADASTRO E ALTERAÇÃO     *@
+@if (IsVisible)
+{
+    <FormModal CloseModal="OpenCloseModal">
+        <div class="modal-body">
+            <div class="row mb-2">
+                <div class="col-4">
+                    <div class="form-group">
+                        <MudTextField @bind-Value="departmentGetDTO.DepartmentName" Label="Nome do departamento" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </FormModal>
+}
