@@ -40,9 +40,9 @@ namespace SalesManager.Web.Pages
         protected async void OnButtonClicked()
         {
             bool? result = await DialogService.ShowMessageBox(
-                "Warning",
-                "Deleting can not be undone!",
-                yesText: "Delete!", cancelText: "Cancel");
+                "Cuidado",
+                "Você tem certeza que quer deletar esse departamento?",
+                yesText: "Deletar!", cancelText: "Cancelar");
             state = result == null ? "Canceled" : "Deleted!";
             StateHasChanged();
         }

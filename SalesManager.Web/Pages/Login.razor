@@ -1,0 +1,17 @@
+﻿@page "/login"
+@inherits LoginBase
+
+<MudGrid Justify="Justify.Center">
+    <MudItem xs="12" sm="7">
+        <MudPaper Class="pa-4">
+            <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
+                <MudImage Src=".../Images/Logo.jpg" Alt="Logo ajudaki" Elevation="25" Class="rounded-lg" />
+                <MudText Align="Align.Center" Typo="Typo.h6">ENTRE NA SUA CONTA</MudText>
+                <MudTextField T="string" InputType="InputType.Email" Label="Email" Variant="Variant.Outlined" Required="true" />
+                <MudTextField T="string" InputType="InputType.Password" Label="Senha" Variant="Variant.Outlined" Required="true" />
+                <br />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true">Entrar</MudButton>
+            </MudForm>
+        </MudPaper>
+    </MudItem>
+</MudGrid>

@@ -7,7 +7,7 @@
         public string ProductName { get; set; }
 
         public double Price { get; set; }
-
+            
         public int MinimumStock { get; set; }
 
         public int BalanceStock { get; set; }
