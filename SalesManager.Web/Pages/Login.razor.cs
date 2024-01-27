@@ -1,39 +1,53 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using DataTransferObjects.Utils;
+using Microsoft.AspNetCore.Components;
 using MudBlazor;
-using System.Text.RegularExpressions;
+using SalesManager.Web.Authentication;
+using SalesManager.Web.Interfaces;
 
 
 namespace SalesManager.Web.Pages
 {
     public class LoginBase : ComponentBase
     {
-        protected bool success;
-        protected string[] errors = { };
-        protected MudTextField<string> pwField1;
-        protected MudForm form;
+        [Inject] ILoginService LoginService { get; set; }
+        [Inject] IRegisterService RegisterService { get; set; }
+        [Inject] ISnackbar SnackbarService { get; set; }
+        [Inject] AuthenticationProvider AuthenticationProvider { get; set; }
+        [Inject] NavigationManager NavigationManager { get; set; }
 
-        protected IEnumerable<string> PasswordStrength(string pw)
+        protected LoginFormPostDTO LoginFormPostDTO = new LoginFormPostDTO();
+        protected UserPostDTO RegisterPostDTO = new UserPostDTO();
+        protected string Option { get; set; } = "login";    
+
+        protected async Task LoginAsync()
         {
-            if (string.IsNullOrWhiteSpace(pw))
+            string user = await LoginService.LoginAsync(LoginFormPostDTO);
+
+            if (!string.IsNullOrEmpty(user))
             {
-                yield return "Password is required!";
-                yield break;
+                await AuthenticationProvider.UserLoginAsync(user);
+                NavigationManager.NavigateTo("/");
+
+                SnackbarService.Add("Acesso validado", Severity.Success);
+                StateHasChanged();
             }
-            if (pw.Length < 8)
-                yield return "Password must be at least of length 8";
-            if (!Regex.IsMatch(pw, @"[A-Z]"))
-                yield return "Password must contain at least one capital letter";
-            if (!Regex.IsMatch(pw, @"[a-z]"))
-                yield return "Password must contain at least one lowercase letter";
-            if (!Regex.IsMatch(pw, @"[0-9]"))
-                yield return "Password must contain at least one digit";
         }
 
-        protected string PasswordMatch(string arg)
+        protected async void CreateRegisterAsync()
         {
-            if (pwField1.Value != arg)
-                return "Passwords don't match";
-            return null;
+            bool createSucessfull = await RegisterService.CreateAsync("Register", RegisterPostDTO);
+
+            if (createSucessfull)
+            {
+                SnackbarService.Add("Usuário cadastrado com sucesso", Severity.Success);
+
+                LoginFormPostDTO.Email = RegisterPostDTO.Email;
+                LoginFormPostDTO.Password = RegisterPostDTO.Password;
+
+                await LoginAsync();
+            }
         }
+
+        protected void ChangeOption(string option) => Option = option;
     }
 }

@@ -4,7 +4,7 @@ namespace SalesManager.API.Interfaces
 {
     public interface IDepartmentService
     {
-        Task<List<Department>> GetDepartmentsAsync(string value);
+        Task<List<Department>> GetDepartmentsAsync(string searchValue, int idUser, bool showInactive);
 
         Task<Department> GetDepartmentByIdAsync(int departmentId);
 
@@ -14,10 +14,12 @@ namespace SalesManager.API.Interfaces
 
         Task DeleteAsync(Department department);
 
-        Task<bool> ExistsAsync(int departmentId);
+        Task<bool> ExistsAsync(int departmentId, int idUser);
 
-        Task<bool> ExistsByNameAsync(string departmentName);
+        Task<bool> ExistsByNameAsync(string departmentName, int idUser);
 
-        Task<bool> ExistsByNameUpdateAsync(string departmentName, int departmentId);
+        Task<bool> ExistsByNameUpdateAsync(string departmentName, int departmentId, int idUser);
+
+        Task<bool> HasProduct(int departmentId, int idUser);
     }
 }

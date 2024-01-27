@@ -6,6 +6,8 @@ namespace DataTransferObjects.Products
     {
         public int Id { get; set; }
 
+        public DateTime CreatedAt = DateTime.Now;
+
         [Display(Name = "Nome do produto")]
         [Required(ErrorMessage = "O {0} é obrigatorio")]
         public string ProductName { get; set; }
@@ -18,9 +20,17 @@ namespace DataTransferObjects.Products
         [Required(ErrorMessage = "O {0} é obrigatorio")]
         public int MinimumStock { get; set; }
 
+        [Display(Name = "Quantidade em estoque")]
+        [Required(ErrorMessage = "A {0} é obrigatorio")] 
+        public int BalanceStock { get; set; }
+
         [Display(Name = "Departamento")]
         [Required(ErrorMessage = "O {0} é obrigatorio")]
         public int DepartmentId { get; set; }
+
+        public byte Status { get; set; } = 1;
+
+        public int UserId { get; set; }
 
         public ProductPutDTO() { }
 
@@ -31,6 +41,8 @@ namespace DataTransferObjects.Products
             Price = productGetDTO.Price;
             MinimumStock = productGetDTO.MinimumStock;
             DepartmentId = productGetDTO.DepartmentId;
+            Status = productGetDTO.Status;
+            UserId = productGetDTO.UserId;
         }
     }
 }

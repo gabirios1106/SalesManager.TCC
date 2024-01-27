@@ -2,7 +2,7 @@
 {
     public enum MovementType : int
     {
-        Entrada = 0,
-        Saida = 1
+        Compra = 0,
+        Venda = 1
     }
 }

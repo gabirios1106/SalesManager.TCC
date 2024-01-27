@@ -1,45 +1,61 @@
 ﻿@page "/products"
 @inherits ProductsBase
+@attribute [Authorize]
 
 <PageTitle>Products</PageTitle>
 
-<MudTable Items="@productsGetDTO" Dense="@dense" Hover="@hover" ReadOnly="@ronly" Filter="new Func<ProductGetDTO,bool>(FilterFunc)" SortLabel="Sort By">
+<MudTable Items="@productsGetDTOToShow" Outlined="true" Dense="@dense" Striped="true" Hover="@hover" ReadOnly="@ronly" Filter="new Func<ProductGetDTO,bool>(FilterFunc)" SortLabel="Sort By" Loading="@IsLoading" Class="mb-3">
     <ToolBarContent>
-        <MudText Typo="Typo.h6">Produtos</MudText>
+        <MudText Typo="Typo.h6">produtos &nbsp;</MudText>
+        <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" DisableElevation="true" OnClick="@ShowCreateModal" Size="Size.Medium" />
+        <MudSpacer />
+        <MudText Typo="Typo.h6">&nbsp;&nbsp;</MudText>
+        <MudSwitch @bind-Checked="@statusProduct" Color="Color.Surface" @onclick="ChangeStatusOption" Label="Mostrar produtos inativos" ThumbIcon="@(statusProduct==true ? Icons.Material.Filled.Done : Icons.Material.Filled.Close)" ThumbIconColor="@(statusProduct==true ? Color.Success : Color.Error)" />
         <MudSpacer />
         <MudTextField @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
     </ToolBarContent>
     <ColGroup>
-        <col style="width:15%;" />
-        <col style="width:15%;" />
-        <col style="width:15%;" />
-        <col style="width:15%;" />
-        <col style="width:15%;" />
-        <col style="width:15%;" />
+        <col style="width:20%;" />
+        <col style="width:20%;" />
+        <col style="width:20%;" />
+        <col style="width:20%;" />
+        <col style="width:20%;" />
         <col style="width:50px;" />
     </ColGroup>
     <HeaderContent>
-        <MudTh><MudTableSortLabel InitialDirection="SortDirection.Ascending" SortBy="new Func<ProductGetDTO, object>(x=>x.ProductName)">Nome Do produto</MudTableSortLabel></MudTh>
-        <MudTh><MudTableSortLabel SortBy="new Func<ProductGetDTO, object>(x=>x.Price)">Preço</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel InitialDirection="SortDirection.None" SortBy="new Func<ProductGetDTO, object>(x=>x.ProductName)">Nome do produto</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<ProductGetDTO, object>(x=>x.Price)">Preço de venda</MudTableSortLabel></MudTh>
         <MudTh><MudTableSortLabel SortBy="new Func<ProductGetDTO, object>(x=>x.BalanceStock)">Quantidade em estoque</MudTableSortLabel></MudTh>
         <MudTh><MudTableSortLabel SortBy="new Func<ProductGetDTO, object>(x=>x.MinimumStock)">Quantidade minima em estoque</MudTableSortLabel></MudTh>
-        <MudTh><MudTableSortLabel SortBy="new Func<ProductGetDTO, object>(x=>x.DepartmentId)">Departamento</MudTableSortLabel></MudTh>
-        <MudTh><MudTableSortLabel SortBy="new Func<ProductGetDTO, object>(x=>x.CreatedAt)">Data de Criação</MudTableSortLabel></MudTh>
-        <MudTh>&nbsp;</MudTh>
-        <MudTh>&nbsp;</MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<ProductGetDTO, object>(x=>x.DepartmentName)">Departamento</MudTableSortLabel></MudTh>
         <MudTh>&nbsp;</MudTh>
     </HeaderContent>
     <RowTemplate>
         <MudTd DataLabel="ProductName">@context.ProductName</MudTd>
-        <MudTd DataLabel="CreatedAt">@context.Price</MudTd>
-        <MudTd DataLabel="CreatedAt">@context.BalanceStock</MudTd>
-        <MudTd DataLabel="CreatedAt">@context.MinimumStock</MudTd>
-        <MudTd DataLabel="CreatedAt">@context.DepartmentId</MudTd>
-        <MudTd DataLabel="CreatedAt">@context.CreatedAt</MudTd>
-        <MudTh><MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Title="Editar" OnClick="OpenCloseModal" /></MudTh>
-        <MudTh><MudIconButton Icon="@Icons.Material.Filled.Assignment" Color="Color.Primary" Title="Editar" OnClick="OpenCloseModal" /></MudTh>
-        <MudTh><MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Title="Excluir" OnClick="OnButtonClicked" /></MudTh>
+        <MudTd DataLabel="Price">@context.Price.ToString("C", CultureInfoPtBR.NumberFormat)</MudTd>
+        <MudTd DataLabel="BalanceStock">@context.BalanceStock</MudTd>
+        <MudTd DataLabel="MinimumStock">@context.MinimumStock</MudTd>
+        <MudTd DataLabel="DepartmentName">@context.DepartmentName</MudTd>
+        <MudTh>
+            <MudButtonGroup Size="Size.Small" OverrideStyles="false">
+
+                @if (context.Status == 1)
+                {
+                    <MudIconButton Color="Color.Primary" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Edit" Title="Editar" OnClick="(() => ShowUpdateModal(context))" />
+                    <MudIconButton Color="Color.Dark" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Assignment" Title="Detalhes" OnClick="(() => ShowDetailsModal(context))" />
+                    <MudIconButton Color="Color.Error" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Delete" Title="Excluir" OnClick="(() => OnButtonClicked(context.Id))" />
+                }
+                else
+                {
+                    <MudIconButton Color="Color.Success" Variant="Variant.Filled" Icon="@Icons.Material.Filled.RestoreFromTrash" Title="Ativar" OnClick="(() => ActiveProductsAsync(context))" />
+                }
+
+            </MudButtonGroup>
+        </MudTh>
     </RowTemplate>
+    <NoRecordsContent>
+        <MudText Typo="Typo.h6" Style="font-weight: bold">Nenhum produto encontrado!</MudText>
+    </NoRecordsContent>
     <PagerContent>
         <MudTablePager />
     </PagerContent>
@@ -47,22 +63,3 @@
         <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" Class="pa-0" OnClick="@button.ButtonAction" Disabled="@button.ButtonDisabled" />
     </EditButtonContent>
 </MudTable>
-<br />
-<MudChip>@state</MudChip>
-
-
-@*     FORMULÁRIO PARA CADASTRO E ALTERAÇÃO     *@
-@if (IsVisible)
-{
-    <FormModal CloseModal="OpenCloseModal">
-        <div class="modal-body">
-            <div class="row mb-2">
-                <div class="col-4">
-                    <div class="form-group">
-                        <MudTextField @bind-Value="productGetDTO.ProductName" Label="Nome do departamento" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </FormModal>
-}

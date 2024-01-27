@@ -1,13 +1,18 @@
 ﻿using DataTransferObjects.Departments;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
+using SalesManager.Web.Interfaces;
+using SalesManager.Web.Pages.Dialogs;
 
 namespace SalesManager.Web.Pages
 {
     public class DepartmentsBase : ComponentBase
     {
-        [Inject] private IDialogService DialogService { get; set; }
-        protected string state = "Message box hasn't been opened yet";
+        [Inject] IDepartmentService DepartmentService { get; set; }
+        [Inject] IDialogService DialogService { get; set; }
+        [Inject] ISnackbar SnackbarService { get; set; }
+
+        protected bool confirmDelete = false;
 
         protected string searchString = "";
         protected bool dense = false;
@@ -15,39 +20,72 @@ namespace SalesManager.Web.Pages
         protected bool ronly = false;
         protected bool canCancelEdit = false;
         protected bool blockSwitch = false;
-        protected DepartmentGetDTO departmentGetDTO = new DepartmentGetDTO();
-        public bool IsVisible { get; set; } = false;
+        protected bool statusDepartment = false;
 
-        protected List<DepartmentGetDTO> departmentsGetDTO = new List<DepartmentGetDTO>()
-        {
-            new DepartmentGetDTO() { Id = 1, DepartmentName = "Roupas", CreatedAt = DateTime.Now },
-            new DepartmentGetDTO() { Id = 2, DepartmentName = "Eletrônicos", CreatedAt = DateTime.Now },
-            new DepartmentGetDTO() { Id = 3, DepartmentName = "Domésticos", CreatedAt = DateTime.Now },
-            new DepartmentGetDTO() { Id = 4, DepartmentName = "Celulares", CreatedAt = DateTime.Now },
-            new DepartmentGetDTO() { Id = 5, DepartmentName = "Instrumentos", CreatedAt = DateTime.Now },
-            new DepartmentGetDTO() { Id = 6, DepartmentName = "Cozinha", CreatedAt = DateTime.Now },
-            new DepartmentGetDTO() { Id = 7, DepartmentName = "Escritório", CreatedAt = DateTime.Now },
-            new DepartmentGetDTO() { Id = 8, DepartmentName = "Cama", CreatedAt = DateTime.Now },
-            new DepartmentGetDTO() { Id = 9, DepartmentName = "Mesa", CreatedAt = DateTime.Now },
-            new DepartmentGetDTO() { Id = 10, DepartmentName = "Banho", CreatedAt = DateTime.Now },
-            new DepartmentGetDTO() { Id = 11, DepartmentName = "Alimentos", CreatedAt = DateTime.Now },
-            new DepartmentGetDTO() { Id = 12, DepartmentName = "Bebidas", CreatedAt = DateTime.Now },
-            new DepartmentGetDTO() { Id = 13, DepartmentName = "Carros", CreatedAt = DateTime.Now },
-            new DepartmentGetDTO() { Id = 14, DepartmentName = "Esportes", CreatedAt = DateTime.Now },
-            new DepartmentGetDTO() { Id = 15, DepartmentName = "Informática", CreatedAt = DateTime.Now }
-        };
+        public bool IsLoading { get; set; } = false;
 
-        protected async void OnButtonClicked()
+        protected List<DepartmentGetDTO> departmentsGetDTO = new List<DepartmentGetDTO>();
+        protected List<DepartmentGetDTO> departmentsGetDTOToShow = new List<DepartmentGetDTO>();
+
+        protected async override Task OnInitializedAsync()
         {
-            bool? result = await DialogService.ShowMessageBox(
-                "Cuidado",
-                "Você tem certeza que quer deletar esse departamento?",
-                yesText: "Deletar!", cancelText: "Cancelar");
-            state = result == null ? "Canceled" : "Deleted!";
+            await GetDepartmentsAsync();
+        }
+
+        protected void ChangeStatusOption()
+        {
+            statusDepartment = !statusDepartment;
+            FilterDepartmentsToShow();
             StateHasChanged();
         }
 
-        protected void OpenCloseModal() => IsVisible = !IsVisible;
+        protected async Task GetDepartmentsAsync()
+        {
+            IsLoading = true;
+            StateHasChanged();
+
+            departmentsGetDTO = await DepartmentService.GetDepartmentsAsync($"Departments?idUser={Program.GetIdUser()}");
+            IsLoading = false;
+            FilterDepartmentsToShow();
+            StateHasChanged();
+        }
+
+        private void FilterDepartmentsToShow() => departmentsGetDTOToShow = departmentsGetDTO.Where(d => d.Status == (statusDepartment ? 0 : 1)).ToList();
+
+        protected async void OnButtonClicked(int departmentId)
+        {
+            DialogOptions dialogOptions = new DialogOptions
+            {
+                ClassBackground = "blurry-dialog-class",
+                CloseOnEscapeKey = true,
+                CloseButton = true,
+                MaxWidth = MaxWidth.ExtraSmall,
+                FullWidth = true
+            };
+
+            bool? result = await DialogService.ShowMessageBox(
+                "Cuidado",
+                "Você tem certeza que quer deletar esse departamento?",
+                yesText: "Deletar!", cancelText: "Cancelar",
+                options: dialogOptions);
+
+            confirmDelete = result == null ? false : true;
+
+            if (confirmDelete)
+            {
+                bool deleteDepartment = await DepartmentService.DeleteAsync($"Departments/{departmentId}");
+
+                if (deleteDepartment)
+                {
+                    await GetDepartmentsAsync();
+
+                    string message = (departmentsGetDTO.Any(d => d.Status == 0 && d.Id == departmentId)) ? "desativado" : "excluído";
+                    SnackbarService.Add($"Departamento {message} com sucesso", Severity.Success);
+                }
+
+                StateHasChanged();
+            }
+        }
 
         protected bool FilterFunc(DepartmentGetDTO departmentGetDTO)
         {
@@ -58,6 +96,76 @@ namespace SalesManager.Web.Pages
             if (departmentGetDTO.CreatedAt.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase))
                 return true;
             return false;
+        }
+
+        protected async void ActiveDepartmentsAsync(DepartmentGetDTO departmentGetDTO)
+        {
+            DepartmentPutDTO departmentPutDTO = new DepartmentPutDTO(departmentGetDTO);
+            departmentPutDTO.Status = 1;
+
+            bool updateSucessfull = await DepartmentService.UpdateAsync("Departments", departmentPutDTO);
+
+            if (updateSucessfull)
+            {
+                await GetDepartmentsAsync();
+                SnackbarService.Add("Departamento ativado com sucesso", Severity.Success);
+            }
+
+            StateHasChanged();
+        }
+
+        protected void ShowCreateModal()
+        {
+            Console.WriteLine("Oi");
+
+            DialogOptions dialogOptions = new DialogOptions
+            {
+                ClassBackground = "blurry-dialog-class",
+                CloseOnEscapeKey = true,
+                CloseButton = true,
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true
+            };
+
+            DialogParameters dialogParameters = new DialogParameters<DepartmentCreateDialog>();
+            dialogParameters.Add("GetDepartmentsAsync", EventCallback.Factory.Create(this, GetDepartmentsAsync));
+
+            DialogService.Show<DepartmentCreateDialog>("Cadastrar Departamento", dialogParameters, dialogOptions);
+        }
+
+        protected void ShowUpdateModal(DepartmentGetDTO departmentGetDTO)
+        {
+            DialogOptions dialogOptions = new DialogOptions
+            {
+                ClassBackground = "blurry-dialog-class",
+                CloseOnEscapeKey = true,
+                CloseButton = true,
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true
+            };
+
+            DialogParameters dialogParameters = new DialogParameters<DepartmentUpdateDialog>();
+            dialogParameters.Add("DepartmentPutDTO", new DepartmentPutDTO(departmentGetDTO));
+            dialogParameters.Add("GetDepartmentsAsync", EventCallback.Factory.Create(this, GetDepartmentsAsync));
+
+            DialogService.Show<DepartmentUpdateDialog>("Atualizar Departamento", dialogParameters, dialogOptions);
+        }
+
+        protected void ShowDetailsModal(DepartmentGetDTO departmentGetDTO)
+        {
+            DialogOptions dialogOptions = new DialogOptions
+            {
+                ClassBackground = "blurry-dialog-class",
+                CloseOnEscapeKey = true,
+                CloseButton = true,
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true
+            };
+
+            DialogParameters dialogParameters = new DialogParameters<DepartmentDetailsDialog>();
+            dialogParameters.Add("DepartmentGetDTO", departmentGetDTO);
+
+            DialogService.Show<DepartmentDetailsDialog>(departmentGetDTO.DepartmentName, dialogParameters, dialogOptions);
         }
     }
 }

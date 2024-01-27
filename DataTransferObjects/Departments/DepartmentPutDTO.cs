@@ -10,12 +10,17 @@ namespace DataTransferObjects.Departments
         [Required(ErrorMessage = "O campo {0} é obrigatorio")]
         public string DepartmentName { get; set; }
 
+        public byte Status { get; set; } = 1;
+
+        public int UserId { get; set; }
+
         public DepartmentPutDTO() { }
 
         public DepartmentPutDTO(DepartmentGetDTO departmentGetDTO)
         {
             Id = departmentGetDTO.Id;
             DepartmentName = departmentGetDTO.DepartmentName;
+            UserId = departmentGetDTO.UserId;
         }
     }
 }

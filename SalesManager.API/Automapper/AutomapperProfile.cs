@@ -2,7 +2,9 @@
 using DataTransferObjects.Departments;
 using DataTransferObjects.Products;
 using DataTransferObjects.StockMovement;
+using DataTransferObjects.Clients;
 using Models;
+using DataTransferObjects.Utils;
 
 namespace SalesManager.API.Automapper
 {
@@ -18,8 +20,14 @@ namespace SalesManager.API.Automapper
             CreateMap<Department, DepartmentPutDTO>().ReverseMap();
             CreateMap<Department, DepartmentPostDTO>().ReverseMap();
 
+            CreateMap<Client, ClientGetDTO>().ReverseMap();
+            CreateMap<Client, ClientPutDTO>().ReverseMap();
+            CreateMap<Client, ClientPostDTO>().ReverseMap();
+
             CreateMap<StockMovement, StockMovementGetDTO>().ReverseMap();
-            CreateMap<StockMovement, StockMovementPostDTO>().ReverseMap();
+            CreateMap<StockMovement, StockMovementPurchasePostDTO>().ReverseMap();
+
+            CreateMap<User, UserPostDTO>().ReverseMap();
         }
     }
 }

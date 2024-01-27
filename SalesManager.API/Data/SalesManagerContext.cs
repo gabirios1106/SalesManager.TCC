@@ -6,57 +6,97 @@ namespace SalesManager.API.Data
     public class SalesManagerContext : DbContext
     {
         public SalesManagerContext(DbContextOptions<SalesManagerContext> options) : base(options) { }
-
-        public DbSet<User> User { get; set; }
         public DbSet<Department> Department { get; set; }
         public DbSet<Product> Product { get; set; }
         public DbSet<StockMovement> StockMovement { get; set; }
+        public DbSet<Client> Client { get; set; }
+        public DbSet<FinancialManager> FinancialManager { get; set; }
+        public DbSet<User> User { get; set; }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            optionsBuilder.EnableSensitiveDataLogging();
+            base.OnConfiguring(optionsBuilder);
+        }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
 
-            builder.Entity<User>(b =>
+            builder.Entity<Department>(d =>
             {
-                b.HasKey(u => u.Id);
-                b.Property(u => u.Id).ValueGeneratedOnAdd();
+                d.HasKey(d => d.Id);
+                d.Property(d => d.Id).ValueGeneratedOnAdd();
 
-                b.Property(u => u.Name).IsRequired().HasMaxLength(150);
-                b.Property(u => u.Email).IsRequired().HasMaxLength(150);
-                b.Property(u => u.Password).IsRequired().HasMaxLength(50);
-                b.Property(u => u.CreatedAt).IsRequired();
+                d.Property(d => d.DepartmentName).IsRequired().HasMaxLength(150);
+                d.Property(d => d.CreatedAt).IsRequired();
+
+                d.HasOne(d => d.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.NoAction).IsRequired();
             });
 
-            builder.Entity<Department>(b =>
+            builder.Entity<Product>(p =>
             {
-                b.HasKey(d => d.Id);
-                b.Property(d => d.Id).ValueGeneratedOnAdd();
+                p.HasKey(p => p.Id);
+                p.Property(p => p.Id).ValueGeneratedOnAdd();
 
-                b.Property(d => d.DepartmentName).IsRequired().HasMaxLength(150);
-                b.Property(d => d.CreatedAt).IsRequired();
+                p.Property(p => p.ProductName).IsRequired().HasMaxLength(150);
+                p.Property(p => p.Price).IsRequired();
+                p.Property(p => p.MinimumStock).IsRequired();
+
+                p.HasOne(p => p.Department).WithMany().HasForeignKey(p => p.DepartmentId).OnDelete(DeleteBehavior.NoAction).IsRequired();
+                p.HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.NoAction).IsRequired();
             });
 
-            builder.Entity<Product>(b =>
+            builder.Entity<StockMovement>(sm =>
             {
-                b.HasKey(p => p.Id);
-                b.Property(p => p.Id).ValueGeneratedOnAdd();
+                sm.HasKey(sm => sm.Id);
+                sm.Property(sm => sm.Id).ValueGeneratedOnAdd();
 
-                b.Property(p => p.ProductName).IsRequired().HasMaxLength(150);
-                b.Property(p => p.Price).IsRequired();
+                sm.Property(sm => sm.Quantity).IsRequired();
+                sm.Property(sm => sm.MovementType).IsRequired();
+                sm.Property(sm => sm.CreatedAt).IsRequired();
+                sm.Property(sm => sm.Quantity).IsRequired(); 
 
-                b.HasOne(p => p.Department).WithMany().HasForeignKey(p => p.DepartmentId).OnDelete(DeleteBehavior.NoAction).IsRequired();
+                sm.HasOne(sm => sm.Product).WithMany().HasForeignKey(p => p.ProductId).OnDelete(DeleteBehavior.NoAction).IsRequired();
+                sm.HasOne(sm => sm.Client).WithMany().HasForeignKey(p => p.ClientID).OnDelete(DeleteBehavior.NoAction);
+                sm.HasOne(sm => sm.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.NoAction).IsRequired();
             });
 
-            builder.Entity<StockMovement>(b =>
+            builder.Entity<Client>(c =>
             {
-                b.HasKey(sm => sm.Id);
-                b.Property(sm => sm.Id).ValueGeneratedOnAdd();
+                c.HasKey(c => c.Id);
+                c.Property(c => c.Id).ValueGeneratedOnAdd();
 
-                b.Property(sm => sm.Quantity).IsRequired();
-                b.Property(sm => sm.MovementType).IsRequired();
-                b.Property(sm => sm.CreatedAt).IsRequired();
+                c.Property(c => c.ClientName).IsRequired();
+                c.Property(c => c.ClientEmail).IsRequired();
+                c.Property(c => c.ClientAddressCity).IsRequired();
+                c.Property(c => c.ClientAddressState).IsRequired();
+                c.Property(c => c.ClientCEP).IsRequired();
 
-                b.HasOne(sm => sm.Product).WithMany().HasForeignKey(p => p.ProductId).OnDelete(DeleteBehavior.NoAction).IsRequired();
+                c.HasOne(c => c.User).WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.NoAction).IsRequired();
+            });
+
+            builder.Entity<FinancialManager>(fm =>
+            {
+                fm.HasKey(fm => fm.Id);
+                fm.Property(fm => fm.Id).ValueGeneratedOnAdd();
+
+                fm.Property(fm => fm.GainSalesOfProduct).IsRequired();
+                fm.Property(fm => fm.LossOrExpenseOfProduct).IsRequired();
+                fm.Property(fm => fm.ProfitOfProduct).IsRequired();
+
+                fm.HasOne(fm => fm.Product).WithMany().HasForeignKey(p => p.ProductId).OnDelete(DeleteBehavior.NoAction).IsRequired();
+                fm.HasOne(fm => fm.User).WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.NoAction).IsRequired();
+            });
+
+            builder.Entity<User>(r =>
+            {
+                r.HasKey(r => r.Id);
+                r.Property(r => r.Id).ValueGeneratedOnAdd();
+
+                r.Property(r => r.CompleteName).IsRequired();
+                r.Property(r => r.Email).IsRequired();
+                r.Property(r => r.Password).IsRequired();
             });
         }
     }

@@ -22,9 +22,11 @@ namespace SalesManager.API.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<List<DepartmentGetDTO>>> GetDepartmentsAsync([FromQuery] string value)
+        public async Task<ActionResult<List<DepartmentGetDTO>>> GetDepartmentsAsync([FromQuery] string searchValue, [FromQuery] int idUser, [FromQuery] bool showInactive = true)
         {
-            List<Department> departments = await _departmentsService.GetDepartmentsAsync(value);
+            List<Department> departments = await _departmentsService.GetDepartmentsAsync(searchValue, idUser, showInactive);
+
+            if (departments == null) { return NotFound(); }
 
             List<DepartmentGetDTO> departmentsGetDTO = _mapper.Map<List<DepartmentGetDTO>>(departments);
 
@@ -50,11 +52,11 @@ namespace SalesManager.API.Controllers
         [HttpPost]
         public async Task<ActionResult<DepartmentGetDTO>> PostDepartmentAsync([FromBody] DepartmentPostDTO departmentPostDTO)
         {
-            if (await _departmentsService.ExistsByNameAsync(departmentPostDTO.DepartmentName))
+            if (await _departmentsService.ExistsByNameAsync(departmentPostDTO.DepartmentName, departmentPostDTO.UserId))
             {
                 return BadRequest($"Já existe um departamento com o nome {departmentPostDTO.DepartmentName}");
             }
-            
+
             Department department = _mapper.Map<Department>(departmentPostDTO);
             await _departmentsService.InsertAsync(department);
 
@@ -73,12 +75,13 @@ namespace SalesManager.API.Controllers
                 return NotFound($"Nenhum registro encontrado com o id {departmentPutDTO.Id}");
             }
 
-            if (await _departmentsService.ExistsByNameUpdateAsync(departmentPutDTO.DepartmentName, departmentPutDTO.Id))
+            if (await _departmentsService.ExistsByNameUpdateAsync(departmentPutDTO.DepartmentName, departmentPutDTO.Id, departmentPutDTO.UserId))
             {
                 return BadRequest($"Já existe um departamento com o nome {departmentPutDTO.DepartmentName}");
             }
 
             department.DepartmentName = departmentPutDTO.DepartmentName;
+            department.Status = departmentPutDTO.Status;
 
             try
             {
@@ -102,10 +105,18 @@ namespace SalesManager.API.Controllers
             {
                 return NotFound($"Nenhum registro encontrado com o id {departmentId}");
             }
-            
+
             try
             {
-                await _departmentsService.DeleteAsync(department);
+                if (await _departmentsService.HasProduct(departmentId, department.UserId))
+                {
+                    department.Status = 0;
+                    await _departmentsService.UpdateAsync(department);
+                }
+                else
+                {
+                    await _departmentsService.DeleteAsync(department);
+                }
             }
             catch (DBConcurrencyException e)
             {

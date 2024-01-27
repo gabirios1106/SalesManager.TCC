@@ -12,7 +12,7 @@ namespace SalesManager.API.Migrations
 {
     [DbContext(typeof(SalesManagerContext))]
     [Migration("20230922190902_initial")]
-    partial class initial
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

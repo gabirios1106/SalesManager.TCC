@@ -17,6 +17,18 @@ namespace SalesManager.API.Controllers
 
         [HttpPost]
         [Route("Login")]
-        public async Task<ActionResult<bool>> Login([FromBody] LoginFormPostDTO loginFormPostDTO) => await _userService.CheckAccess(loginFormPostDTO);
+        public async Task<ActionResult<string>> Login([FromBody] LoginFormPostDTO loginFormPostDTO)
+        {
+            string result = await _userService.CheckAccess(loginFormPostDTO);
+
+            if (!string.IsNullOrEmpty(result))
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return Unauthorized("Usuário e/ou senha inválidos");
+            }
+        }
     }
 }

@@ -1,12 +1,15 @@
-﻿using Models;
+﻿using DataTransferObjects.Products;
+using Models;
 
 namespace SalesManager.API.Interfaces
 {
     public interface IProductService
     {
-        Task<List<Product>> GetProductAsync(string value);
+        Task<List<ProductGetDTO>> GetProductAsync(string value, int idUser, string orderBy, bool showInactive);
 
         Task<Product> GetProductByIdAsync(int productId);
+
+        bool SufficientStock(int productId, int quantity);
 
         Task InsertAsync(Product product);
 
@@ -14,12 +17,12 @@ namespace SalesManager.API.Interfaces
 
         Task DeleteAsync(Product product);
 
-        Task<bool> ExistsAsync(int productId);
+        Task<bool> ExistsAsync(int productId, int idUser);
 
-        Task<bool> ExistsByNameAsync(string productName);
+        Task<Product> ExistsByNameAsync(string productName, int idUser);
 
-        Task<bool> ExistsByNameUpdateAsync(string productName, int productId);
+        Task<Product> ExistsByNameUpdateAsync(string productName, int productId, int idUser);
 
-
+        Task<bool> ExistsStockMovement(int productId, int idUser);
     }
 }

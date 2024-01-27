@@ -2,6 +2,8 @@
 {
     public class Product
     {
+        public User User { get; set; }
+        public int UserId { get; set; }
         public int Id { get; set; }
 
         public string ProductName { get; set; }
@@ -17,6 +19,8 @@
         public Department Department { get; set; }
 
         public int DepartmentId { get; set; }
+
+        public byte Status { get; set; } = 1;
 
         public Product() { }
     }

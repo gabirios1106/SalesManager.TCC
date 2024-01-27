@@ -2,48 +2,89 @@
 using DataTransferObjects.Products;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
+using SalesManager.Web.Interfaces;
+using SalesManager.Web.Pages.Dialogs;
+using System.Globalization;
 
 namespace SalesManager.Web.Pages
 {
     public class ProductsBase : ComponentBase
     {
-        [Inject] private IDialogService DialogService { get; set; }
-        protected string state = "Message box hasn't been opened yet";
+        [Inject] IProductService ProductService { get; set; }
+        [Inject] IDialogService DialogService { get; set; }
+        [Inject] ISnackbar SnackbarService { get; set; }
 
+        protected bool confirmDelete = false;
         protected string searchString = "";
         protected bool dense = false;
         protected bool hover = true;
         protected bool ronly = false;
         protected bool canCancelEdit = false;
         protected bool blockSwitch = false;
+        protected bool statusProduct = false;
         protected ProductGetDTO productGetDTO = new ProductGetDTO();
+        protected ProductPostDTO productPostDTO = new ProductPostDTO();
+        protected ProductPutDTO productPutDTO = new ProductPutDTO();
         public bool IsVisible { get; set; } = false;
+        public bool IsVisibleUpdate { get; set; } = false;
+        public bool IsVisibleDetail { get; set; } = false;
+        public bool IsLoading { get; set; } = false;
 
-        protected List<ProductGetDTO> productsGetDTO = new List<ProductGetDTO>()
+        protected List<ProductGetDTO> productsGetDTO = new List<ProductGetDTO>();
+        protected List<ProductGetDTO> productsGetDTOToShow = new List<ProductGetDTO>();
+        protected CultureInfo CultureInfoPtBR { get; set; } = new CultureInfo("pt-BR");
+
+        protected async override Task OnInitializedAsync()
         {
-            new ProductGetDTO() { Id = 1, ProductName = "Camisa social", Price = 10.0, MinimumStock = 5, BalanceStock = 10, DepartmentId = 1,  CreatedAt = DateTime.Now },
-            new ProductGetDTO() { Id = 2, ProductName = "Calça", Price = 10.0, MinimumStock = 5, BalanceStock = 10, DepartmentId = 1,  CreatedAt = DateTime.Now },
-            new ProductGetDTO() { Id = 3, ProductName = "Iphone", Price = 10.0, MinimumStock = 5, BalanceStock = 10, DepartmentId = 1,  CreatedAt = DateTime.Now },
-            new ProductGetDTO() { Id = 4, ProductName = "Farinha lacta", Price = 10.0, MinimumStock = 5, BalanceStock = 10, DepartmentId = 1,  CreatedAt = DateTime.Now },
-            new ProductGetDTO() { Id = 5, ProductName = "Strogonof", Price = 10.0, MinimumStock = 5, BalanceStock = 10, DepartmentId = 1,  CreatedAt = DateTime.Now },
-            new ProductGetDTO() { Id = 6, ProductName = "Coca Cola", Price = 10.0, MinimumStock = 5, BalanceStock = 10, DepartmentId = 1,  CreatedAt = DateTime.Now },
-            new ProductGetDTO() { Id = 7, ProductName = "Fanta Laranja", Price = 10.0, MinimumStock = 5, BalanceStock = 10, DepartmentId = 1,  CreatedAt = DateTime.Now },
-            new ProductGetDTO() { Id = 8, ProductName = "Civic SI", Price = 10.0, MinimumStock = 5, BalanceStock = 10, DepartmentId = 1,  CreatedAt = DateTime.Now },
-            new ProductGetDTO() { Id = 9, ProductName = "Camaro", Price = 10.0, MinimumStock = 5, BalanceStock = 10, DepartmentId = 1,  CreatedAt = DateTime.Now },
-            new ProductGetDTO() { Id = 10, ProductName = "Nivus", Price = 10.0, MinimumStock = 5, BalanceStock = 10, DepartmentId = 1,  CreatedAt = DateTime.Now }
-        };
+            await GetProductsAsync();
+        }
 
-        protected async void OnButtonClicked()
+        protected void ChangeStatusOption()
+        {
+            statusProduct = !statusProduct;
+            FilterProductsToShow();
+        }
+
+        protected async Task GetProductsAsync()
+        {
+            IsLoading = true;
+            StateHasChanged();
+
+            productsGetDTO = await ProductService.GetProductsAsync($"Products?idUser={Program.GetIdUser()}");
+            IsLoading = false;
+            FilterProductsToShow();
+            StateHasChanged();
+        }
+
+        private void FilterProductsToShow() => productsGetDTOToShow = productsGetDTO.Where(p => p.Status == (statusProduct ? 0 : 1)).ToList();
+
+        protected async void OnButtonClicked(int productId)
         {
             bool? result = await DialogService.ShowMessageBox(
                 "Cuidado",
                 "Você tem certeza que quer deletar esse produto?",
                 yesText: "Deletar!", cancelText: "Cancelar");
-            state = result == null ? "Canceled" : "Deleted!";
-            StateHasChanged();
+
+            confirmDelete = result == null ? false : true;
+
+            if (confirmDelete)
+            {
+                bool deleteProduct = await ProductService.DeleteAsync($"Products/{productId}");
+                if (deleteProduct)
+                {
+                    await GetProductsAsync();
+
+                    string message = (productsGetDTO.Any(p => p.Status == 0 && p.Id == productId)) ? "desativado" : "excluído";
+                    SnackbarService.Add($"Produto {message} com sucesso", Severity.Success);
+                }
+
+                StateHasChanged();
+            }
         }
 
         protected void OpenCloseModal() => IsVisible = !IsVisible;
+        protected void OpenCloseUpdateModal() => IsVisibleUpdate = !IsVisibleUpdate;
+        protected void OpenCloseDetailModal() => IsVisibleDetail = !IsVisibleDetail;
 
         protected bool FilterFunc(ProductGetDTO productGetDTO)
         {
@@ -56,6 +97,74 @@ namespace SalesManager.Web.Pages
             if (productGetDTO.DepartmentId.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase))
                 return true;
             return false;
+        }
+
+        protected async void ActiveProductsAsync(ProductGetDTO productGetDTO)
+        {
+            productPutDTO = new ProductPutDTO(productGetDTO);
+            productPutDTO.Status = 1;
+
+            bool updateSucessfull = await ProductService.UpdateAsync("Products", productPutDTO);
+
+            if (updateSucessfull)
+            {
+                await GetProductsAsync();
+                SnackbarService.Add("Produto ativado com sucesso", Severity.Success);
+            }
+
+            StateHasChanged();
+        }
+
+        protected void ShowCreateModal()
+        {
+            DialogOptions dialogOptions = new DialogOptions
+            {
+                ClassBackground = "blurry-dialog-class",
+                CloseOnEscapeKey = true,
+                CloseButton = true,
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true
+            };
+
+            DialogParameters dialogParameters = new DialogParameters<ProductCreateDialog>();
+            dialogParameters.Add("GetProductsAsync", EventCallback.Factory.Create(this, GetProductsAsync));
+
+            DialogService.Show<ProductCreateDialog>("Cadastrar Produto", dialogParameters, dialogOptions);
+        }
+
+        protected void ShowUpdateModal(ProductGetDTO productGetDTO)
+        {
+            DialogOptions dialogOptions = new DialogOptions
+            {
+                ClassBackground = "blurry-dialog-class",
+                CloseOnEscapeKey = true,
+                CloseButton = true,
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true
+            };
+
+            DialogParameters dialogParameters = new DialogParameters<ProductUpdateDialog>();
+            dialogParameters.Add("ProductPutDTO", new ProductPutDTO(productGetDTO));
+            dialogParameters.Add("GetProductsAsync", EventCallback.Factory.Create(this, GetProductsAsync));
+
+            DialogService.Show<ProductUpdateDialog>("Atualizar Produto", dialogParameters, dialogOptions);
+        }
+
+        protected void ShowDetailsModal(ProductGetDTO productGetDTO)
+        {
+            DialogOptions dialogOptions = new DialogOptions
+            {
+                ClassBackground = "blurry-dialog-class",
+                CloseOnEscapeKey = true,
+                CloseButton = true,
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true
+            };
+
+            DialogParameters dialogParameters = new DialogParameters<ProductDetailsDialog>();
+            dialogParameters.Add("ProductGetDTO", productGetDTO);
+
+            DialogService.Show<ProductDetailsDialog>(productGetDTO.ProductName, dialogParameters, dialogOptions);
         }
     }
 }

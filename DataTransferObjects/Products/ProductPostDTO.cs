@@ -21,8 +21,17 @@ namespace DataTransferObjects.Products
         public int BalanceStock { get; set; }
 
         [Display(Name = "Departamento")]
-        [Required(ErrorMessage = "O {0} é obrigatorio")]
+        [Range(1, Int32.MaxValue, ErrorMessage = "O {0} é obrigatório")]
         public int DepartmentId { get; set; }
+
+        public byte Status { get; set; } = 1;
+
+        public int UserId { get; set; }
+
+        public ProductPostDTO(int idUser)
+        {
+            UserId = idUser;
+        }
 
         public ProductPostDTO() { }
     }

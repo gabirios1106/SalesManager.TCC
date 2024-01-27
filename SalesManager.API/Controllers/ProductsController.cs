@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using DataTransferObjects.Departments;
 using DataTransferObjects.Products;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,20 +13,22 @@ namespace SalesManager.API.Controllers
     public class ProductsController : ControllerBase
     {
         private readonly IProductService _productsService;
+        private readonly IStockMovementService _stockMovementService;
+        private readonly IFinancialManagerService _financialManagerService;
         private readonly IMapper _mapper;
 
-        public ProductsController(IProductService productsService, IMapper mapper)
+        public ProductsController(IProductService productsService, IMapper mapper, IStockMovementService stockMovementService, IFinancialManagerService financialManagerService)
         {
             _productsService = productsService;
             _mapper = mapper;
+            _stockMovementService = stockMovementService;
+            _financialManagerService = financialManagerService;
         }
 
         [HttpGet]
-        public async Task<ActionResult<List<ProductGetDTO>>> GetProductsAsync([FromQuery] string value)
+        public async Task<ActionResult<List<ProductGetDTO>>> GetProductsAsync([FromQuery] string value, [FromQuery] int idUser, [FromQuery] string orderBy, [FromQuery] bool showInactive = true)
         {
-            List<Product> products = await _productsService.GetProductAsync(value);
-
-            List<ProductGetDTO> productsGetDTO = _mapper.Map<List<ProductGetDTO>>(products);
+            List<ProductGetDTO> productsGetDTO = await _productsService.GetProductAsync(value, idUser, orderBy, showInactive);
 
             return Ok(productsGetDTO);
         }
@@ -51,16 +52,32 @@ namespace SalesManager.API.Controllers
         [HttpPost]
         public async Task<ActionResult<ProductGetDTO>> PostProductAsync([FromBody] ProductPostDTO productPostDTO)
         {
-            if (await _productsService.ExistsByNameAsync(productPostDTO.ProductName))
+            Product product1 = await _productsService.ExistsByNameAsync(productPostDTO.ProductName, productPostDTO.UserId);
+
+            if (product1 != null)
             {
-                return BadRequest($"Já existe um produto com o nome {productPostDTO.ProductName}");
+                string textMsg = product1.Status == 0 ? $"inativo (código {product1.Id}) " : string.Empty;
+                return BadRequest($"Já existe um produto {textMsg}  com o nome {productPostDTO.ProductName}");
             }
 
             Product product = _mapper.Map<Product>(productPostDTO);
+
+            int balanceStock = product.BalanceStock;
+            product.BalanceStock = 0;
+
             await _productsService.InsertAsync(product);
 
-            //ProductGetDTO productGetDTO = new ProductGetDTO();
-            //return CreatedAtAction("GetProductById", new { productId = product.Id }, productGetDTO);
+            StockMovement stockMovement = new StockMovement()
+            {
+                MovementType = MovementType.Compra,
+                Quantity = balanceStock,
+                Message = "Estoque inicial",
+                ProductId = product.Id,
+                UserId = product.UserId
+            };
+
+            await _stockMovementService.InsertAsync(stockMovement);
+
             return Created();
         }
 
@@ -74,12 +91,20 @@ namespace SalesManager.API.Controllers
                 return NotFound($"Nenhum registro encontrado com o id {productPutDTO.Id}");
             }
 
-            if (await _productsService.ExistsByNameUpdateAsync(productPutDTO.ProductName, productPutDTO.Id))
+            Product product1 = await _productsService.ExistsByNameUpdateAsync(productPutDTO.ProductName, productPutDTO.Id, productPutDTO.UserId);
+
+            if (product1 != null)
             {
-                return BadRequest($"Já existe um produto com o nome {productPutDTO.ProductName}");
+                string textMsg = product1.Status == 0 ? $"inativo (código {product1.Id}) " : string.Empty;
+                return BadRequest($"Já existe um produto {textMsg} com o nome {productPutDTO.ProductName}");
             }
 
             product.ProductName = productPutDTO.ProductName;
+            product.Price = productPutDTO.Price;
+            product.BalanceStock = productPutDTO.BalanceStock;
+            product.DepartmentId = productPutDTO.DepartmentId;
+            product.MinimumStock = productPutDTO.MinimumStock;
+            product.Status = productPutDTO.Status;
 
             try
             {
@@ -106,7 +131,22 @@ namespace SalesManager.API.Controllers
 
             try
             {
-                await _productsService.DeleteAsync(product);
+                if (await _productsService.ExistsStockMovement(productId, product.UserId))
+                {
+                    product.Status = 0;
+                    await _productsService.UpdateAsync(product);
+                }
+                else
+                {
+                    FinancialManager financialManager = await _financialManagerService.GetFinancialManagerById(productId);
+
+                    if (financialManager != null)
+                    {
+                        await _financialManagerService.DeleteAsync(financialManager);
+                    }
+
+                    await _productsService.DeleteAsync(product);
+                }
             }
             catch (DBConcurrencyException e)
             {
